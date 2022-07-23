@@ -376,28 +376,15 @@ func (p *PlayerCache) Get(ctx context.Context, tenantDB dbOrTx, id string) (*Pla
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	now := time.Now()
 	if val, ok := p.m[id]; ok {
 		return &val.value, nil
-		// if now.Sub(val.loadStart) < time.Millisecond*2000 { // TODO: tuning
-		// return &val.value, nil
-		// // if val.tenantID == tenantID {
-		// //     return &val.value, nil
-		// // } else {
-		// //     return nil, fmt.Errorf("not found")
-		// // }
-		// } else {
-		// 	delete(p.m, id)
-		// }
 	}
 	var pr PlayerRow
 	if err := tenantDB.GetContext(ctx, &pr, "SELECT * FROM player WHERE id = ?", id); err != nil {
 		return nil, fmt.Errorf("error Select player: id=%s, %w", id, err)
 	}
 	p.m[id] = PlayerCacheValue{
-		// TenantID: TenantID,
-		value:     pr,
-		loadStart: now,
+		value: pr,
 	}
 	return &pr, nil
 }
