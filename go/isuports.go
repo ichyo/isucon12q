@@ -17,6 +17,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -347,13 +348,54 @@ type PlayerRow struct {
 	UpdatedAt      int64  `db:"updated_at"`
 }
 
-// 参加者を取得する
-func retrievePlayer(ctx context.Context, tenantDB dbOrTx, id string) (*PlayerRow, error) {
-	var p PlayerRow
-	if err := tenantDB.GetContext(ctx, &p, "SELECT * FROM player WHERE id = ?", id); err != nil {
+type PlayerCacheValue struct {
+	tenantID  int64
+	value     PlayerRow
+	loadStart time.Time
+}
+
+type PlayerCache struct {
+	mu sync.Mutex
+	m  map[string]PlayerCacheValue
+}
+
+func (p *PlayerCache) Clear() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.m = make(map[string]PlayerCacheValue)
+}
+
+func (p *PlayerCache) Unset(id string) {
+	p.mu.Lock()
+	delete(p.m, id)
+	p.mu.Unlock()
+}
+
+func (p *PlayerCache) Get(ctx context.Context, tenantDB dbOrTx, id string) (*PlayerRow, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if val, ok := p.m[id]; ok {
+		return &val.value, nil
+	}
+	var pr PlayerRow
+	if err := tenantDB.GetContext(ctx, &pr, "SELECT * FROM player WHERE id = ?", id); err != nil {
 		return nil, fmt.Errorf("error Select player: id=%s, %w", id, err)
 	}
-	return &p, nil
+	p.m[id] = PlayerCacheValue{
+		value: pr,
+	}
+	return &pr, nil
+}
+
+var playerCache PlayerCache = PlayerCache{
+	mu: sync.Mutex{},
+	m:  make(map[string]PlayerCacheValue),
+}
+
+func retrievePlayer(ctx context.Context, tenantDB dbOrTx, id string) (*PlayerRow, error) {
+	return playerCache.Get(ctx, tenantDB, id)
 }
 
 // 参加者を認可する
@@ -841,6 +883,9 @@ func playerDisqualifiedHandler(c echo.Context) error {
 			true, now, playerID, err,
 		)
 	}
+
+	playerCache.Unset(playerID)
+
 	p, err := retrievePlayer(ctx, tenantDB, playerID)
 	if err != nil {
 		// 存在しないプレイヤー
@@ -1553,6 +1598,7 @@ func meHandler(c echo.Context) error {
 	}
 
 	tenantDB, err := connectToTenantDB(v.tenantID)
+	defer tenantDB.Close()
 	if err != nil {
 		return fmt.Errorf("error connectToTenantDB: %w", err)
 	}
@@ -1601,6 +1647,7 @@ func initializeHandler(c echo.Context) error {
 
 	for i := 1; i < 100; i++ {
 		db, err := connectToTenantDB(int64(i))
+		defer db.Close()
 		if err != nil {
 			return fmt.Errorf("error connect:%e", err)
 		}
@@ -1621,6 +1668,8 @@ func initializeHandler(c echo.Context) error {
 			return fmt.Errorf("error index: %e", err)
 		}
 	}
+
+	playerCache.Clear()
 
 	if err != nil {
 		return fmt.Errorf("error exec.Command: %s %e", string(out), err)
