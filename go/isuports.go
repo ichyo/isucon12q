@@ -577,7 +577,7 @@ func billingReportByCompetition(ctx context.Context, tenantDB dbOrTx, tenantID i
 		}
 	}
 
-	fmt.Printf("tenant_id = %d, competition_id = %s, playerYen = %d, visitorYen = %d, billingYen = %d", tenantID, competitonID, 100*playerCount, 10*visitorCount, 100*playerCount+10*visitorCount)
+	fmt.Printf("tenant_id = %d, competition_id = %s, playerYen = %d, visitorYen = %d, billingYen = %d\n", tenantID, competitonID, 100*playerCount, 10*visitorCount, 100*playerCount+10*visitorCount)
 
 	return &BillingReport{
 		CompetitionID:     comp.ID,
