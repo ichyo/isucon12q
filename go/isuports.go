@@ -1143,25 +1143,34 @@ func competitionScoreHandler(c echo.Context) error {
 		return fmt.Errorf("error Delete player_score: tenantID=%d, competitionID=%s, %w", v.tenantID, competitionID, err)
 	}
 
-	valueQuery := ""
-	values := make([]interface{}, 0)
-	for _, ps := range playerScoreRows {
-		if valueQuery != "" {
-			valueQuery += ","
-		}
-		valueQuery += "(?, ?, ?, ?, ?, ?, ?, ?)"
-		values = append(values, ps.ID, ps.TenantID, ps.PlayerID, ps.CompetitionID, ps.Score, ps.RowNum, ps.CreatedAt, ps.UpdatedAt)
-	}
+	g := 100
 
-	if _, err := tenantDB.ExecContext(
-		ctx,
-		"INSERT INTO player_score (id, tenant_id, player_id, competition_id, score, row_num, created_at, updated_at) VALUES "+valueQuery,
-		values...,
-	); err != nil {
-		return fmt.Errorf(
-			"error Insert player_scores: %w",
-			err,
-		)
+	for start := 0; start < len(playerScoreRows); start += g {
+		valueQuery := ""
+		values := make([]interface{}, 0)
+		end := start + g
+		if end > len(playerScoreRows) {
+			end = len(playerScoreRows)
+		}
+		for i := start; i < end; i++ {
+			if valueQuery != "" {
+				valueQuery += ","
+			}
+			ps := playerScoreRows[i]
+			valueQuery += "(?, ?, ?, ?, ?, ?, ?, ?)"
+			values = append(values, ps.ID, ps.TenantID, ps.PlayerID, ps.CompetitionID, ps.Score, ps.RowNum, ps.CreatedAt, ps.UpdatedAt)
+		}
+
+		if _, err := tenantDB.ExecContext(
+			ctx,
+			"INSERT INTO player_score (id, tenant_id, player_id, competition_id, score, row_num, created_at, updated_at) VALUES "+valueQuery,
+			values...,
+		); err != nil {
+			return fmt.Errorf(
+				"error Insert player_scores: %w",
+				err,
+			)
+		}
 	}
 
 	fl.Close() // it's done
