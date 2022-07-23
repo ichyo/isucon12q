@@ -115,8 +115,8 @@ func SetCacheControlPrivate(next echo.HandlerFunc) echo.HandlerFunc {
 // Run は cmd/isuports/main.go から呼ばれるエントリーポイントです
 func Run() {
 	e := echo.New()
-	e.Debug = true
-	e.Logger.SetLevel(log.DEBUG)
+	e.Debug = false
+	e.Logger.SetLevel(log.ERROR)
 
 	var (
 		sqlLogger io.Closer
@@ -170,7 +170,8 @@ func Run() {
 		e.Logger.Fatalf("failed to connect db: %v", err)
 		return
 	}
-	adminDB.SetMaxOpenConns(10)
+	adminDB.SetMaxOpenConns(64)
+	adminDB.SetConnMaxLifetime(10 * time.Second)
 	defer adminDB.Close()
 
 	port := getEnv("SERVER_APP_PORT", "3000")
