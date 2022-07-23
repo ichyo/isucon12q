@@ -1612,6 +1612,7 @@ func meHandler(c echo.Context) error {
 	}
 
 	tenantDB, err := connectToTenantDB(v.tenantID)
+	defer tenantDB.Close()
 	if err != nil {
 		return fmt.Errorf("error connectToTenantDB: %w", err)
 	}
@@ -1660,6 +1661,7 @@ func initializeHandler(c echo.Context) error {
 
 	for i := 1; i < 100; i++ {
 		db, err := connectToTenantDB(int64(i))
+		defer db.Close()
 		if err != nil {
 			return fmt.Errorf("error connect:%e", err)
 		}
