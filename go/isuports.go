@@ -103,13 +103,13 @@ func dispenseID(ctx context.Context) (string, error) {
 	var lastErr error
 	for i := 0; i < 100; i++ {
 		var ret sql.Result
-		ret, err := adminDB.ExecContext(ctx, "REPLACE INTO id_generator (stub) VALUES (?);", "a")
+		ret, err := adminDB.ExecContext(ctx, "INSERT INTO id_generator (stub) VALUES (?);", "a")
 		if err != nil {
 			if merr, ok := err.(*mysql.MySQLError); ok && merr.Number == 1213 { // deadlock
-				lastErr = fmt.Errorf("error REPLACE INTO id_generator: %w", err)
+				lastErr = fmt.Errorf("error INSERT INTO id_generator: %w", err)
 				continue
 			}
-			return "", fmt.Errorf("error REPLACE INTO id_generator: %w", err)
+			return "", fmt.Errorf("error INSERT INTO id_generator: %w", err)
 		}
 		id, err = ret.LastInsertId()
 		if err != nil {
