@@ -1604,28 +1604,28 @@ type InitializeHandlerResult struct {
 func initializeHandler(c echo.Context) error {
 	out, err := exec.Command(initializeScript).CombinedOutput()
 
-	for i := 1; i < 100; i++ {
-		db, err := connectToTenantDB(int64(i))
-		if err != nil {
-			return fmt.Errorf("error connect:%e", err)
-		}
-		_, err = db.Exec("CREATE INDEX idx11 ON player_score (tenant_id, competition_id, player_id, row_num)")
-		if err != nil {
-			return fmt.Errorf("error index: %e", err)
-		}
-		_, err = db.Exec("CREATE INDEX idx12 ON player_score (tenant_id, competition_id, row_num)")
-		if err != nil {
-			return fmt.Errorf("error index: %e", err)
-		}
-		_, err = db.Exec("CREATE INDEX idx2 ON competition (tenant_id, created_at)")
-		if err != nil {
-			return fmt.Errorf("error index: %e", err)
-		}
-		_, err = db.Exec("CREATE INDEX idx3 ON player (tenant_id, created_at)")
-		if err != nil {
-			return fmt.Errorf("error index: %e", err)
-		}
-	}
+	// for i := 1; i < 100; i++ {
+	// 	db, err := connectToTenantDB(int64(i))
+	// 	if err != nil {
+	// 		return fmt.Errorf("error connect:%e", err)
+	// 	}
+	// 	_, err = db.Exec("CREATE INDEX idx11 ON player_score (tenant_id, competition_id, player_id, row_num)")
+	// 	if err != nil {
+	// 		return fmt.Errorf("error index: %e", err)
+	// 	}
+	// 	_, err = db.Exec("CREATE INDEX idx12 ON player_score (tenant_id, competition_id, row_num)")
+	// 	if err != nil {
+	// 		return fmt.Errorf("error index: %e", err)
+	// 	}
+	// 	_, err = db.Exec("CREATE INDEX idx2 ON competition (tenant_id, created_at)")
+	// 	if err != nil {
+	// 		return fmt.Errorf("error index: %e", err)
+	// 	}
+	// 	_, err = db.Exec("CREATE INDEX idx3 ON player (tenant_id, created_at)")
+	// 	if err != nil {
+	// 		return fmt.Errorf("error index: %e", err)
+	// 	}
+	// }
 
 	if err != nil {
 		return fmt.Errorf("error exec.Command: %s %e", string(out), err)
