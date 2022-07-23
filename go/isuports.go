@@ -366,6 +366,12 @@ func (p *PlayerCache) Clear() {
 	p.m = make(map[string]PlayerCacheValue)
 }
 
+func (p *PlayerCache) Unset(id string) {
+	p.mu.Lock()
+	delete(p.m, id)
+	p.mu.Unlock()
+}
+
 func (p *PlayerCache) Get(ctx context.Context, tenantDB dbOrTx, id string) (*PlayerRow, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -891,6 +897,9 @@ func playerDisqualifiedHandler(c echo.Context) error {
 			true, now, playerID, err,
 		)
 	}
+
+	playerCache.Unset(playerID)
+
 	p, err := retrievePlayer(ctx, tenantDB, playerID)
 	if err != nil {
 		// 存在しないプレイヤー
