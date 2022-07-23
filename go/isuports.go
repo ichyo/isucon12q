@@ -79,23 +79,28 @@ func tenantDBPath(id int64) string {
 
 // テナントDBに接続する
 func connectToTenantDB(id int64) (*sqlx.DB, error) {
-	p := tenantDBPath(id)
-	db, err := sqlx.Open(sqliteDriverName, fmt.Sprintf("file:%s?mode=rw", p))
-	if err != nil {
-		return nil, fmt.Errorf("failed to open tenant DB: %w", err)
-	}
-	return db, nil
+	db, err := connectAdminDB()
+	return db, err
+
+	// p := tenantDBPath(id)
+	// db, err := sqlx.Open(sqliteDriverName, fmt.Sprintf("file:%s?mode=rw", p))
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to open tenant DB: %w", err)
+	// }
+	// return db, nil
 }
 
 // テナントDBを新規に作成する
 func createTenantDB(id int64) error {
-	p := tenantDBPath(id)
-
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("sqlite3 %s < %s", p, tenantDBSchemaFilePath))
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to exec sqlite3 %s < %s, out=%s: %w", p, tenantDBSchemaFilePath, string(out), err)
-	}
 	return nil
+
+	// p := tenantDBPath(id)
+
+	// cmd := exec.Command("sh", "-c", fmt.Sprintf("sqlite3 %s < %s", p, tenantDBSchemaFilePath))
+	// if out, err := cmd.CombinedOutput(); err != nil {
+	// 	return fmt.Errorf("failed to exec sqlite3 %s < %s, out=%s: %w", p, tenantDBSchemaFilePath, string(out), err)
+	// }
+	// return nil
 }
 
 // システム全体で一意なIDを生成する
