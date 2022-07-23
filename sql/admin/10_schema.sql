@@ -3,6 +3,9 @@ USE `isuports`;
 DROP TABLE IF EXISTS `tenant`;
 DROP TABLE IF EXISTS `id_generator`;
 DROP TABLE IF EXISTS `visit_history`;
+DROP TABLE IF EXISTS competition;
+DROP TABLE IF EXISTS player;
+DROP TABLE IF EXISTS player_score;
 
 CREATE TABLE `tenant` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
