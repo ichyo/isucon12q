@@ -577,8 +577,6 @@ func billingReportByCompetition(ctx context.Context, tenantDB dbOrTx, tenantID i
 		}
 	}
 
-	fmt.Printf("tenant_id = %d, competition_id = %s, playerYen = %d, visitorYen = %d, billingYen = %d\n", tenantID, competitonID, 100*playerCount, 10*visitorCount, 100*playerCount+10*visitorCount)
-
 	return &BillingReport{
 		CompetitionID:     comp.ID,
 		CompetitionTitle:  comp.Title,
@@ -643,7 +641,6 @@ func tenantsBillingHandler(c echo.Context) error {
 		return fmt.Errorf("error Select tenant: %w", err)
 	}
 	tenantBillings := make([]TenantWithBilling, 0, len(ts))
-	fmt.Printf("beforeID = %d\n", beforeID)
 	for _, t := range ts {
 		if beforeID != 0 && beforeID <= t.ID {
 			continue
