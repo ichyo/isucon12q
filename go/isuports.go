@@ -1099,7 +1099,7 @@ func competitionScoreHandler(c echo.Context) error {
 
 	if _, err := tenantDB.ExecContext(
 		ctx,
-		"INSERT INTO player_score (id, tenant_id, player_id, competition_id, score, row_num, created_at, updated_at) VALUES (:id, :tenant_id, :player_id, :competition_id, :score, :row_num, :created_at, :updated_at) VALUES "+valueQuery,
+		"INSERT INTO player_score (id, tenant_id, player_id, competition_id, score, row_num, created_at, updated_at) VALUES "+valueQuery,
 		values...,
 	); err != nil {
 		return fmt.Errorf(
