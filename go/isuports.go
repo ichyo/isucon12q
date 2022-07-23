@@ -79,23 +79,28 @@ func tenantDBPath(id int64) string {
 
 // テナントDBに接続する
 func connectToTenantDB(id int64) (*sqlx.DB, error) {
-	p := tenantDBPath(id)
-	db, err := sqlx.Open(sqliteDriverName, fmt.Sprintf("file:%s?mode=rw", p))
-	if err != nil {
-		return nil, fmt.Errorf("failed to open tenant DB: %w", err)
-	}
-	return db, nil
+	db, err := connectAdminDB()
+	return db, err
+
+	// p := tenantDBPath(id)
+	// db, err := sqlx.Open(sqliteDriverName, fmt.Sprintf("file:%s?mode=rw", p))
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to open tenant DB: %w", err)
+	// }
+	// return db, nil
 }
 
 // テナントDBを新規に作成する
 func createTenantDB(id int64) error {
-	p := tenantDBPath(id)
-
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("sqlite3 %s < %s", p, tenantDBSchemaFilePath))
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to exec sqlite3 %s < %s, out=%s: %w", p, tenantDBSchemaFilePath, string(out), err)
-	}
 	return nil
+
+	// p := tenantDBPath(id)
+
+	// cmd := exec.Command("sh", "-c", fmt.Sprintf("sqlite3 %s < %s", p, tenantDBSchemaFilePath))
+	// if out, err := cmd.CombinedOutput(); err != nil {
+	// 	return fmt.Errorf("failed to exec sqlite3 %s < %s, out=%s: %w", p, tenantDBSchemaFilePath, string(out), err)
+	// }
+	// return nil
 }
 
 // システム全体で一意なIDを生成する
@@ -1599,28 +1604,28 @@ type InitializeHandlerResult struct {
 func initializeHandler(c echo.Context) error {
 	out, err := exec.Command(initializeScript).CombinedOutput()
 
-	for i := 1; i < 100; i++ {
-		db, err := connectToTenantDB(int64(i))
-		if err != nil {
-			return fmt.Errorf("error connect:%e", err)
-		}
-		_, err = db.Exec("CREATE INDEX idx11 ON player_score (tenant_id, competition_id, player_id, row_num)")
-		if err != nil {
-			return fmt.Errorf("error index: %e", err)
-		}
-		_, err = db.Exec("CREATE INDEX idx12 ON player_score (tenant_id, competition_id, row_num)")
-		if err != nil {
-			return fmt.Errorf("error index: %e", err)
-		}
-		_, err = db.Exec("CREATE INDEX idx2 ON competition (tenant_id, created_at)")
-		if err != nil {
-			return fmt.Errorf("error index: %e", err)
-		}
-		_, err = db.Exec("CREATE INDEX idx3 ON player (tenant_id, created_at)")
-		if err != nil {
-			return fmt.Errorf("error index: %e", err)
-		}
-	}
+	// for i := 1; i < 100; i++ {
+	// 	db, err := connectToTenantDB(int64(i))
+	// 	if err != nil {
+	// 		return fmt.Errorf("error connect:%e", err)
+	// 	}
+	// 	_, err = db.Exec("CREATE INDEX idx11 ON player_score (tenant_id, competition_id, player_id, row_num)")
+	// 	if err != nil {
+	// 		return fmt.Errorf("error index: %e", err)
+	// 	}
+	// 	_, err = db.Exec("CREATE INDEX idx12 ON player_score (tenant_id, competition_id, row_num)")
+	// 	if err != nil {
+	// 		return fmt.Errorf("error index: %e", err)
+	// 	}
+	// 	_, err = db.Exec("CREATE INDEX idx2 ON competition (tenant_id, created_at)")
+	// 	if err != nil {
+	// 		return fmt.Errorf("error index: %e", err)
+	// 	}
+	// 	_, err = db.Exec("CREATE INDEX idx3 ON player (tenant_id, created_at)")
+	// 	if err != nil {
+	// 		return fmt.Errorf("error index: %e", err)
+	// 	}
+	// }
 
 	if err != nil {
 		return fmt.Errorf("error exec.Command: %s %e", string(out), err)
