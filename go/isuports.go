@@ -1600,7 +1600,7 @@ func initializeHandler(c echo.Context) error {
 		if err != nil {
 			return fmt.Errorf("error index: %e", err)
 		}
-		_, err = db.Exec("CREATE INDEX idx12 ON player_score (tenant_id, competition_id, row_num")
+		_, err = db.Exec("CREATE INDEX idx12 ON player_score (tenant_id, competition_id, row_num)")
 		if err != nil {
 			return fmt.Errorf("error index: %e", err)
 		}
