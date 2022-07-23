@@ -463,28 +463,6 @@ func lockFilePath(id int64) string {
 	return filepath.Join(tenantDBDir, fmt.Sprintf("%d.lock", id))
 }
 
-type FLock struct {
-	mu sync.Mutex
-	m  map[int64]*sync.Mutex
-}
-
-var flock_ FLock = FLock{
-	mu: sync.Mutex{},
-	m:  make(map[int64]*sync.Mutex),
-}
-
-func lockByTenantID(tenantID int64) (*sync.Mutex, error) {
-	flock_.mu.Lock()
-	defer flock_.mu.Unlock()
-	if val, ok := flock_.m[tenantID]; ok {
-		return val, nil
-	} else {
-		var s sync.Mutex = sync.Mutex{}
-		flock_.m[tenantID] = &s
-		return &s, nil
-	}
-}
-
 // 排他ロックする
 func flockByTenantID(tenantID int64) (io.Closer, error) {
 	p := lockFilePath(tenantID)
@@ -623,11 +601,11 @@ func billingReportByCompetition(ctx context.Context, tenantDB dbOrTx, tenantID i
 	}
 
 	// player_scoreを読んでいるときに更新が走ると不整合が起こるのでロックを取得する
-	fl, err := lockByTenantID(tenantID)
+	fl, err := flockByTenantID(tenantID)
 	if err != nil {
 		return nil, fmt.Errorf("error flockByTenantID: %w", err)
 	}
-	defer fl.Unlock()
+	defer fl.Close()
 
 	// スコアを登録した参加者のIDを取得する
 	scoredPlayerIDs := []string{}
@@ -1105,11 +1083,11 @@ func competitionScoreHandler(c echo.Context) error {
 	}
 
 	// / DELETEしたタイミングで参照が来ると空っぽのランキングになるのでロックする
-	fl, err := lockByTenantID(v.tenantID)
+	fl, err := flockByTenantID(v.tenantID)
 	if err != nil {
 		return fmt.Errorf("error flockByTenantID: %w", err)
 	}
-	defer fl.Unlock()
+	defer fl.Close()
 	var rowNum int64
 	playerScoreRows := []PlayerScoreRow{}
 	for {
@@ -1301,11 +1279,11 @@ func playerHandler(c echo.Context) error {
 	}
 
 	// player_scoreを読んでいるときに更新が走ると不整合が起こるのでロックを取得する
-	fl, err := lockByTenantID(v.tenantID)
+	fl, err := flockByTenantID(v.tenantID)
 	if err != nil {
 		return fmt.Errorf("error flockByTenantID: %w", err)
 	}
-	defer fl.Unlock()
+	defer fl.Close()
 	pss := make([]PlayerScoreRow, 0, len(cs))
 	for _, c := range cs {
 		ps := PlayerScoreRow{}
@@ -1429,11 +1407,11 @@ func competitionRankingHandler(c echo.Context) error {
 	}
 
 	// player_scoreを読んでいるときに更新が走ると不整合が起こるのでロックを取得する
-	fl, err := lockByTenantID(v.tenantID)
+	fl, err := flockByTenantID(v.tenantID)
 	if err != nil {
 		return fmt.Errorf("error flockByTenantID: %w", err)
 	}
-	defer fl.Unlock()
+	defer fl.Close()
 	pss := []PlayerScoreRow{}
 	if err := tenantDB.SelectContext(
 		ctx,
