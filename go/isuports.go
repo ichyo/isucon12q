@@ -608,6 +608,9 @@ func billingReportByCompetition(ctx context.Context, tenantDB dbOrTx, tenantID i
 		billingMap[pid] = "player"
 	}
 
+	// unlock when it's done to read player_score
+	fl.Close()
+
 	// 大会が終了している場合のみ請求金額が確定するので計算する
 	var playerCount, visitorCount int64
 	if comp.FinishedAt.Valid {
@@ -1075,12 +1078,6 @@ func competitionScoreHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid CSV headers")
 	}
 
-	// / DELETEしたタイミングで参照が来ると空っぽのランキングになるのでロックする
-	fl, err := flockByTenantID(v.tenantID)
-	if err != nil {
-		return fmt.Errorf("error flockByTenantID: %w", err)
-	}
-	defer fl.Close()
 	var rowNum int64
 	playerScoreRows := []PlayerScoreRow{}
 	for {
@@ -1130,6 +1127,13 @@ func competitionScoreHandler(c echo.Context) error {
 		})
 	}
 
+	// / DELETEしたタイミングで参照が来ると空っぽのランキングになるのでロックする
+	fl, err := flockByTenantID(v.tenantID)
+	if err != nil {
+		return fmt.Errorf("error flockByTenantID: %w", err)
+	}
+	defer fl.Close()
+
 	if _, err := tenantDB.ExecContext(
 		ctx,
 		"DELETE FROM player_score WHERE tenant_id = ? AND competition_id = ?",
@@ -1159,6 +1163,8 @@ func competitionScoreHandler(c echo.Context) error {
 			err,
 		)
 	}
+
+	fl.Close() // it's done
 
 	return c.JSON(http.StatusOK, SuccessResult{
 		Status: true,
@@ -1297,6 +1303,8 @@ func playerHandler(c echo.Context) error {
 		}
 		pss = append(pss, ps)
 	}
+
+	fl.Close() // it's done
 
 	psds := make([]PlayerScoreDetail, 0, len(pss))
 	for _, ps := range pss {
