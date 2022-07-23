@@ -17,6 +17,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -347,13 +348,62 @@ type PlayerRow struct {
 	UpdatedAt      int64  `db:"updated_at"`
 }
 
-// 参加者を取得する
-func retrievePlayer(ctx context.Context, tenantDB dbOrTx, id string) (*PlayerRow, error) {
-	var p PlayerRow
-	if err := tenantDB.GetContext(ctx, &p, "SELECT * FROM player WHERE id = ?", id); err != nil {
+type PlayerCacheValue struct {
+	tenantID  int64
+	value     PlayerRow
+	loadStart time.Time
+}
+
+type PlayerCache struct {
+	mu sync.Mutex
+	m  map[string]PlayerCacheValue
+}
+
+func (p *PlayerCache) Clear() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.m = make(map[string]PlayerCacheValue)
+}
+
+func (p *PlayerCache) Get(ctx context.Context, tenantDB dbOrTx, id string) (*PlayerRow, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	now := time.Now()
+	if val, ok := p.m[id]; ok {
+		if now.Sub(val.loadStart) < time.Millisecond*2000 { // TODO: tuning
+			return &val.value, nil
+			/*
+				if val.tenantID == tenantID {
+					return &val.value, nil
+				} else {
+					return nil, fmt.Errorf("not found")
+				}
+			*/
+		} else {
+			delete(p.m, id)
+		}
+	}
+	var pr PlayerRow
+	if err := tenantDB.GetContext(ctx, &pr, "SELECT * FROM player WHERE id = ?", id); err != nil {
 		return nil, fmt.Errorf("error Select player: id=%s, %w", id, err)
 	}
-	return &p, nil
+	p.m[id] = PlayerCacheValue{
+		// TenantID: TenantID,
+		value:     pr,
+		loadStart: now,
+	}
+	return &pr, nil
+}
+
+var playerCache PlayerCache = PlayerCache{
+	mu: sync.Mutex{},
+	m:  make(map[string]PlayerCacheValue),
+}
+
+func retrievePlayer(ctx context.Context, tenantDB dbOrTx, id string) (*PlayerRow, error) {
+	return playerCache.Get(ctx, tenantDB, id)
 }
 
 // 参加者を認可する
@@ -1621,6 +1671,8 @@ func initializeHandler(c echo.Context) error {
 			return fmt.Errorf("error index: %e", err)
 		}
 	}
+
+	playerCache.Clear()
 
 	if err != nil {
 		return fmt.Errorf("error exec.Command: %s %e", string(out), err)
